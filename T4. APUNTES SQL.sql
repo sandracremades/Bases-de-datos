@@ -620,3 +620,213 @@ DELIMITER ;
 
 CALL CribaDeErastotenes();
 SELECT Numero FROM NumerosPrimos WHERE NOT Marcado;
+
+-- 24. Crea un procedimiento que llamaremos TestDePrimalidad al que le pasaremos el valor máximo como parámetro y que llenará la tabla, llamará al algoritmo CribaDeEsrastotenes y mostrará en pantalla los números primos obtenidos
+
+DROP TABLE IF EXISTS `NumerosPrimos`;
+CREATE TABLE `NumerosPrimos` (
+    `Numero` INTEGER NOT NULL,
+    `Marcado` BOOLEAN,
+    CONSTRAINT `PK_NumerosPrimos` PRIMARY KEY (`Numero`)
+) ENGINE=MEMORY;
+
+-- -----------------------------------------------------------------
+-- Base de datos de la Liga
+-- -----------------------------------------------------------------
+
+-- 25. Queremos usar dos funciones: GolesLocal y GolesVisitante que nos de los goles marcados por el equipo local y por el equipo visitante de un partido. Crea la función GolesLocal
+-- Resultado bien formado:
+-- 3-2; 11-2; 03-2; 3-02; 03-02
+SELECT *
+FROM Partidos
+WHERE Temporada='2018-2019' AND
+      EquipoLocal='Real Madrid CF';
+
+-- 26. Crea las funciones EsDigito que devuelve TRUE si el carácter que se le pasa es un dígito CaracterANumero que convierte un dígito en un número y simplifica la función GolesLocal2 que es una copia de la función GolesLocal
+DROP FUNCTION IF EXISTS EsDigito;
+DELIMITER //
+CREATE FUNCTION EsDigito (Caracter CHAR)
+    RETURNS BOOLEAN
+BEGIN 
+    RETURN Caracter BETWEEN "0" AND "9";
+END//
+DELIMITER ;
+SELECT EsDigito("9");
+
+
+DROP FUNCTION IF EXISTS CaracterANumero;
+DELIMITER //
+CREATE FUNCTION CaracterANumero (Caracter CHAR)
+    RETURNS TINYINT
+BEGIN
+    RETURN ASCII(Caracter) - ASCII('0');
+END//
+DELIMITER ;
+SELECT CaracterANumero("5");
+
+DROP FUNCTION IF EXISTS GolesLocal2;
+DELIMITER //
+CREATE FUNCTION GolesLocal2 (Resultado CHAR(15))
+    RETURNS INT
+BEGIN 
+    DECLARE Goles INT;
+    
+    SET Goles = CaracterANumero(SUBSTRING(Resultado, 1, 1));
+    IF EsDigito(SUBSTRING(Resultado, 2, 1)) THEN
+        SET Goles = Goles * 10 + 
+            CaracterANumero(SUBSTRING(Resultado, 2, 1));
+    END IF;
+    RETURN Goles;
+END//
+DELIMITER ;
+
+DROP FUNCTION IF EXISTS GolesVisitante;
+DELIMITER //
+CREATE FUNCTION GolesVisitante (Resultado CHAR(15))
+    RETURNS INT
+BEGIN
+    DECLARE Goles, Puntero INT;
+    
+    IF SUBSTRING(Resultado, 2, 1) = "-" 
+        THEN SET Puntero = 3;
+        ELSE SET Puntero = 4;
+    END IF;
+    SET Goles = ASCII(SUBSTRING(Resultado, Puntero, 1)) - ASCII("0");
+    IF LENGTH(Resultado) > Puntero THEN
+        SET Goles = Goles * 10 + ASCII(SUBSTRING(Resultado, Puntero + 1, 1))- ASCII("0");
+    END IF;
+    RETURN Goles;
+END//
+DELIMITER ;
+SELECT GolesVisitante("99-2")
+
+
+-- 27. Crea la función GolesVisitante
+
+-- 28. Partidos en los que un equipo ha ganado al otro por siete o más goles
+
+-- 29. Las 20 mayores goleadas de la historia de la liga
+
+-- 30. Partidos en los que un equipo ha ganado al otro por más de cinco goles y ha jugado el Real Madrid
+
+-- 31. Nombre de todos los equipos
+
+-- 32. Mayor goleador  de las 10 ultimas temporadas de la liga como equipo local
+
+-- 33. Mayor goleador de las 10 ultimas temporadas completas de la liga como equipo visitante
+
+SELECT Equipo AS 'Equipos', SUM(Goles) AS 'Goles'
+FROM 
+  (SELECT EquipoLocalX AS Equipo, SUM(GolesLocal(ResultadoBis)) AS 'Goles'
+   FROM   Partidos
+   WHERE Temporada BETWEEN '2009' AND '2018'
+   GROUP BY EquipoLocalX
+   UNION ALL
+   SELECT EquipoVisitanteX, SUM(GolesVisitante(ResultadoBis))
+   FROM   Partidos
+   WHERE Temporada BETWEEN '2009' AND '2018'
+   GROUP BY EquipoVisitanteX) AS Equipos
+GROUP BY `Equipos`
+ORDER BY `Goles` DESC;
+
+-- Número de alirones de cada equipo como equipo local
+SELECT EquipoLocalX, COUNT(*)
+FROM   Partidos
+WHERE  Resultado LIKE '%(A.L.)%'
+GROUP BY EquipoLocalX
+ORDER BY 2 DESC;
+
+-- Número de alirones de cada equipo como equipo visitante
+SELECT EquipoVisitanteX, COUNT(*)
+FROM   Partidos
+WHERE  Resultado LIKE '%(A.V.)%'
+GROUP BY EquipoVisitanteX
+ORDER BY 2 DESC;
+
+-- Todos los alirones en la liga
+SELECT Equipo, COUNT(*) AS 'Número de alirones'
+FROM (
+    SELECT EquipoLocalX AS 'Equipo'
+    FROM   Partidos
+    WHERE  Resultado LIKE '%(A.L.)%'
+    UNION ALL
+    SELECT EquipoVisitanteX
+    FROM   Partidos
+    WHERE  Resultado LIKE '%(A.V.)%') AS Tabla
+GROUP BY Equipo
+ORDER BY `Número de alirones` DESC;
+
+-- -----------------------------------------------------------------
+-- Modificación de la base de datos de la liga:
+-- -----------------------------------------------------------------
+
+ALTER TABLE Partidos ADD COLUMN GolesLocal TINYINT NOT NULL DEFAULT 0;
+ALTER TABLE Partidos ADD COLUMN GolesVisitante TINYINT NOT NULL DEFAULT 0;
+
+UPDATE Partidos
+SET GolesLocal = GolesLocal(ResultadoBis);
+
+UPDATE Partidos
+SET GolesVisitante = GolesVisitante(ResultadoBis);
+
+ALTER TABLE Partidos ADD COLUMN Alirones CHAR NOT NULL DEFAULT '';
+
+UPDATE Partidos
+SET Alirones = 'L'
+WHERE Resultado LIKE '%(A.L.)%';
+
+UPDATE Partidos
+SET Alirones = 'V'
+WHERE Resultado LIKE '%(A.V.)%';
+
+ALTER TABLE Partidos DROP COLUMN ResultadoBis;
+ALTER TABLE Partidos DROP COLUMN Resultado;
+
+CREATE TABLE Equipos AS
+    (SELECT DISTINCT EquipoLocalX AS NombreEquipo
+    FROM Partidos)
+    UNION DISTINCT 
+    (SELECT DISTINCT EquipoVisitanteX
+    FROM Partidos)
+    ORDER BY NombreEquipo;
+    
+ALTER TABLE Equipos ADD IdEquipo INT NOT NULL PRIMARY KEY AUTO_INCREMENT FIRST;
+ALTER TABLE Equipos ADD INDEX Equipos(NombreEquipo);
+
+ALTER TABLE Partidos ADD COLUMN EL INT NOT NULL DEFAULT 0;
+ALTER TABLE Partidos ADD COLUMN EV INT NOT NULL DEFAULT 0;
+
+SELECT * 
+FROM Partidos JOIN Equipos
+ON Partidos.EquipoLocalX = Equipos.NombreEquipo;
+
+UPDATE Partidos JOIN Equipos
+ON Partidos.EquipoLocalX = Equipos.NombreEquipo
+SET EL = Equipos.IdEquipo;
+
+SELECT * 
+FROM Partidos JOIN Equipos
+ON Partidos.EquipoVisitanteX = Equipos.NombreEquipo;
+
+UPDATE Partidos JOIN Equipos
+ON Partidos.EquipoVisitanteX = Equipos.NombreEquipo
+SET EV = Equipos.IdEquipo;
+
+ALTER TABLE Partidos DROP COLUMN EquipoLocal;
+ALTER TABLE Partidos DROP COLUMN EquipoLocalX;
+ALTER TABLE Partidos DROP COLUMN EquipoLocalBis;
+ALTER TABLE Partidos DROP COLUMN EquipoVisitante;
+ALTER TABLE Partidos DROP COLUMN EquipoVisitanteX;
+ALTER TABLE Partidos DROP COLUMN EquipoVisitanteBis;
+
+ALTER TABLE Partidos CHANGE COLUMN EV EquipoVisitante INT NOT NULL DEFAULT 0;
+ALTER TABLE Partidos CHANGE COLUMN EL EquipoLocal INT NOT NULL DEFAULT 0;
+
+ALTER TABLE Partidos ADD CONSTRAINT
+EquipoLocalFK FOREIGN KEY (EquipoLocal) REFERENCES Equipos(IdEquipo);
+
+ALTER TABLE Partidos ADD CONSTRAINT
+EquipoVisitanteFK FOREIGN KEY (EquipoVisitante) REFERENCES Equipos(IdEquipo);
+
+SELECT * FROM Partidos;
+SELECT * FROM Equipos;
