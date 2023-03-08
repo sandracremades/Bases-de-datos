@@ -830,3 +830,75 @@ EquipoVisitanteFK FOREIGN KEY (EquipoVisitante) REFERENCES Equipos(IdEquipo);
 
 SELECT * FROM Partidos;
 SELECT * FROM Equipos;
+
+
+
+
+
+
+-- 34. Partidos jugados por el Barcelona durante la liga 2014-2015
+
+SELECT IF(Promocion, 'PROMOCIÓN', Jornada) AS 'Jornada',
+        EL.NombreEquipo AS 'Equipo Local', EV.NombreEquipo AS 'Equipo Visitante', CONCAT(GolesLocal, '-', GolesVisitante) AS 'Resultado'
+FROM Partidos JOIN Equipos AS EL JOIN Equipos AS EV
+ON Partidos.EquipoLocal = EL.IdEquipo AND Partidos.EquipoVisitante = EV.IdEquipo
+WHERE Temporada = '2014-2015' AND (
+    (SELECT IdEquipo FROM Equipos WHERE NombreEquipo = 'Barcelona') IN 
+    (EL.IdEquipo, EV.IdEquipo))
+ORDER BY Id;
+
+-- -----------------------------------------------------------------
+-- Cursores
+-- -----------------------------------------------------------------
+/*
+Tenemos toda la información en el manual de referencia de MySQL v5,0 castellano:  Capítulo 19.2.11. Cursores.
+
+Los cursores se declaran, se abren, se recorren y se cierran
+
+DECLARE cursor_name CURSOR FOR select_statement;
+Los cursores de declaran justo después de las variables
+
+OPEN cursor_name;
+
+FETCH cursor_name INTO var_name [, var_name] ...;
+Este comando trata el siguiente registro (si existe) usando el cursor abierto que se especifique, y avanza el puntero del cursor.
+
+CLOSE cursor_name;
+cierra un cursor abierto préviamente
+
+En los cursores hay que detectar cuando se llega al final de la tabla. Para ello usaremos un  manejador
+DECLARE handler_type HANDLER FOR condition_value[,...] sp_statement;
+Este comando especifica handlers que pueden tratar una o varias condiciones. Si una de estas condiciones ocurren, el comando especificado se ejecuta.
+*/
+
+
+-- 35. Realizamos un cursor muy simple en el que creamos una tabla con una consulta SELECT en la que mostramos el nombre del equipo junto con el saldo total de goles que ha metido como equipo local menos el número de goles que le han metido los visitantes. Recorreremos esa tabla mostrando individualmente cada equipo y su saldo de goles
+
+SELECT EL.NombreEquipo, SUM(Goleslocal - GolesVisitante) AS SaldoGoles
+FROM Partidos JOIN Equipos AS EL JOIN Equipos AS EV
+ON Partidos.EquipoLocal = EL.IdEquipo AND Partidos.EquipoVisitante = EV.IdEquipo
+GROUP BY EL.IdEquipo
+ORDER BY SaldoGoles DESC;
+
+
+DROP PROCEDURE IF EXISTS PruebaCursor;
+DELIMITER //
+CREATE PROCEDURE Pruebacursor ()
+BEGIN 
+    DECLARE CEquipo VARCHAR(255);
+    DECLARE CSaldoGoles INT;
+    DECLARE CurEquipos CURSOR FOR
+        SELECT   EL.NombreEquipo, 
+                 SUM(Goleslocal - GolesVisitante) AS SaldoGoles
+        FROM     Partidos JOIN Equipos AS EL JOIN Equipos AS EV
+        ON       Partidos.EquipoLocal = EL.IdEquipo AND Partidos.EquipoVisitante = EV.IdEquipo
+        GROUP BY EL.IdEquipo
+        ORDER BY SaldoGoles DESC;
+        
+    OPEN CurEquipos;
+    FETCH CurEquipos INTO CEquipo, CSaldoGoles;
+    SELECT CONCAT('Equipo', CEquipo, '. Saldo Goles: ', CSaldoGoles) AS 'RESULTADO';
+    CLOSE CurEquipos;
+END//
+DELIMITER ;
+CALL PruebaCursor();

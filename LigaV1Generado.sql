@@ -74,3 +74,73 @@ INSERT INTO `Partidos` VALUES (24552,'2016-2017','2017','35.','CA Osasuna','Osas
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2020-02-22 23:50:59
+ALTER TABLE Partidos ADD COLUMN GolesLocal TINYINT NOT NULL DEFAULT 0;
+ALTER TABLE Partidos ADD COLUMN GolesVisitante TINYINT NOT NULL DEFAULT 0;
+
+UPDATE Partidos
+SET GolesLocal = GolesLocal(ResultadoBis);
+
+UPDATE Partidos
+SET GolesVisitante = GolesVisitante(ResultadoBis);
+
+ALTER TABLE Partidos ADD COLUMN Alirones CHAR NOT NULL DEFAULT '';
+
+UPDATE Partidos
+SET Alirones = 'L'
+WHERE Resultado LIKE '%(A.L.)%';
+
+UPDATE Partidos
+SET Alirones = 'V'
+WHERE Resultado LIKE '%(A.V.)%';
+
+ALTER TABLE Partidos DROP COLUMN ResultadoBis;
+ALTER TABLE Partidos DROP COLUMN Resultado;
+
+CREATE TABLE Equipos AS
+    (SELECT DISTINCT EquipoLocalX AS NombreEquipo
+    FROM Partidos)
+    UNION DISTINCT 
+    (SELECT DISTINCT EquipoVisitanteX
+    FROM Partidos)
+    ORDER BY NombreEquipo;
+    
+ALTER TABLE Equipos ADD IdEquipo INT NOT NULL PRIMARY KEY AUTO_INCREMENT FIRST;
+ALTER TABLE Equipos ADD INDEX Equipos(NombreEquipo);
+
+ALTER TABLE Partidos ADD COLUMN EL INT NOT NULL DEFAULT 0;
+ALTER TABLE Partidos ADD COLUMN EV INT NOT NULL DEFAULT 0;
+
+SELECT * 
+FROM Partidos JOIN Equipos
+ON Partidos.EquipoLocalX = Equipos.NombreEquipo;
+
+UPDATE Partidos JOIN Equipos
+ON Partidos.EquipoLocalX = Equipos.NombreEquipo
+SET EL = Equipos.IdEquipo;
+
+SELECT * 
+FROM Partidos JOIN Equipos
+ON Partidos.EquipoVisitanteX = Equipos.NombreEquipo;
+
+UPDATE Partidos JOIN Equipos
+ON Partidos.EquipoVisitanteX = Equipos.NombreEquipo
+SET EV = Equipos.IdEquipo;
+
+ALTER TABLE Partidos DROP COLUMN EquipoLocal;
+ALTER TABLE Partidos DROP COLUMN EquipoLocalX;
+ALTER TABLE Partidos DROP COLUMN EquipoLocalBis;
+ALTER TABLE Partidos DROP COLUMN EquipoVisitante;
+ALTER TABLE Partidos DROP COLUMN EquipoVisitanteX;
+ALTER TABLE Partidos DROP COLUMN EquipoVisitanteBis;
+
+ALTER TABLE Partidos CHANGE COLUMN EV EquipoVisitante INT NOT NULL DEFAULT 0;
+ALTER TABLE Partidos CHANGE COLUMN EL EquipoLocal INT NOT NULL DEFAULT 0;
+
+ALTER TABLE Partidos ADD CONSTRAINT
+EquipoLocalFK FOREIGN KEY (EquipoLocal) REFERENCES Equipos(IdEquipo);
+
+ALTER TABLE Partidos ADD CONSTRAINT
+EquipoVisitanteFK FOREIGN KEY (EquipoVisitante) REFERENCES Equipos(IdEquipo);
+
+SELECT * FROM Partidos;
+SELECT * FROM Equipos;
