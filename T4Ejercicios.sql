@@ -5,7 +5,7 @@
 Bases de Datos
 Tema 4. Ejercicios de Programando con SQL
 Realiza las siguientes consultas SQL
-Nombre:
+Nombre: Sandra Cremades Marín
 Grupo: 1ºDAM (indicar el grupo)
 
 Deberás entregar el resultado en un documento .sql siguiendo el formato indicado en la plantilla.
@@ -142,22 +142,104 @@ ORDER BY 1;
 -- Ejercicio 1. Crea un procedimiento que guarde en una tabla los números 0, 10, 20, 30 ,..., 980, 990, 1000. usa un blucle y el código que se indica a continuación:
 DROP TABLE IF EXISTS `Numeros`;
 CREATE TABLE `Numeros` (
-    `Numero` INTEGER NOT NULL,
+    `Numero` INTEGER NOT NULL
 ) ENGINE=MEMORY;
 
-TRUNCATE TABLE Numeros;
-INSERT INTO Numeros VALUES(7);
-SELECT * FROM Numeros;
+DROP PROCEDURE IF EXISTS ejercicio1;
+DELIMITER //
+CREATE PROCEDURE ejercicio1()
+BEGIN
+		SET @Contador = 0;
+	REPEAT
+		INSERT INTO Numeros VALUES(@Contador);
+		SET @Contador = @Contador + 10;
+	UNTIL @Contador > 1000 END REPEAT;
+END//
+DELIMITER ;
+CALL ejercicio1();
+SELECT *
+FROM Numeros;
 
 -- ----------------------------------------------------------------------------------------------
 -- Ejercicio 2. Crea un procedimiento al que le pasamos un número como parámetro (por ejemplo, 65) y que guarda en una tabla de números el número que ocupa la posición central (en nuestro ejemplo, el 32 o el 33, da igual) y, a continuación, nos guarda la siguiente (33), el anterior del inicial (32), el siguiente del siguiente (34) y el anterior de la anterior de (31), y así con todos los números desde el 1 al número que le pasamos como parámetro (65). Usa un bucle LOOP.
+DROP TABLE IF EXISTS `Numeros`;
+CREATE TABLE `Numeros` (
+    `Numero` INTEGER NOT NULL
+) ENGINE=MEMORY;
 
+TRUNCATE TABLE Numeros;
+
+DROP PROCEDURE IF EXISTS ejercicio2;
+DELIMITER //
+CREATE PROCEDURE ejercicio2(IN Numero INT)
+BEGIN
+		SET @Mitad = ROUND(Numero/2);
+        INSERT INTO Numeros VALUES(@Mitad);
+        SET @Contador = 1;
+	Bucle: LOOP
+		IF @Contador = @Mitad + 1 THEN LEAVE Bucle; END IF;
+        IF @Contador - @Mitad <> 0 THEN 
+			INSERT INTO Numeros VALUES(@Mitad - @Contador); 
+        END IF;
+        INSERT INTO Numeros VALUES(@Mitad + @Contador);
+        SET @Contador = @Contador + 1;
+        
+	END LOOP Bucle;
+END//
+DELIMITER ;
+CALL ejercicio2(10);
+
+SELECT *
+FROM Numeros;
 -- ----------------------------------------------------------------------------------------------
 -- Ejercicio 3. Realiza la consulta anterior usando un bucle WHILE. 
+TRUNCATE TABLE Numeros;
 
+DROP PROCEDURE IF EXISTS ejercicio3;
+DELIMITER //
+CREATE PROCEDURE ejercicio3(IN Numero INT)
+BEGIN
+    SET @Mitad = ROUND(Numero/2);
+	INSERT INTO Numeros VALUES(@Mitad);
+    SET @Contador = 1;
+WHILE @Contador <> @Mitad + 1 DO
+    IF @Contador - @Mitad <> 0 THEN 
+		INSERT INTO Numeros VALUES(@Mitad - @Contador); 
+        END IF;
+        INSERT INTO Numeros VALUES(@Mitad + @Contador);
+        SET @Contador = @Contador + 1;
+END WHILE;
+END//
+DELIMITER ;
+CALL ejercicio3(10);
+
+SELECT *
+FROM Numeros;
 -- ----------------------------------------------------------------------------------------------
 -- Ejercicio 4. Realiza la consulta anterior usando un bucle REPEAT...UNTIL. 
+TRUNCATE TABLE Numeros;
 
+DROP PROCEDURE IF EXISTS ejercicio4;
+DELIMITER //
+CREATE PROCEDURE ejercicio4(IN Numero INT)
+BEGIN
+
+	SET @Mitad = ROUND(Numero/2);
+	INSERT INTO Numeros VALUES(@Mitad);
+    SET @Contador = 1;
+REPEAT
+    IF @Contador - @Mitad <> 0 THEN 
+		INSERT INTO Numeros VALUES(@Mitad - @Contador); 
+	END IF;
+        INSERT INTO Numeros VALUES(@Mitad + @Contador);
+        SET @Contador = @Contador + 1;
+UNTIL @Contador = @Mitad + 1 END REPEAT;
+END//
+DELIMITER ;
+CALL ejercicio4(10);
+
+SELECT *
+FROM Numeros;
 -- ----------------------------------------------------------------------------------------------
 -- Ejercicio 5. En el Tema 3 realizamos la siguiente consulta: 2. Nombre de los países que tienen dos o más ciudades con dos millones de habitantes como mínimo. Parametriza la consulta para que podamos cambiar tanto el número de ciudades como el número de habitantes. Chequea errores en los parámetros y muestra mensajes descritivos. 
 
