@@ -223,7 +223,6 @@ DROP PROCEDURE IF EXISTS ejercicio4;
 DELIMITER //
 CREATE PROCEDURE ejercicio4(IN Numero INT)
 BEGIN
-
 	SET @Mitad = ROUND(Numero/2);
 	INSERT INTO Numeros VALUES(@Mitad);
     SET @Contador = 1;
@@ -243,17 +242,119 @@ FROM Numeros;
 -- ----------------------------------------------------------------------------------------------
 -- Ejercicio 5. En el Tema 3 realizamos la siguiente consulta: 2. Nombre de los países que tienen dos o más ciudades con dos millones de habitantes como mínimo. Parametriza la consulta para que podamos cambiar tanto el número de ciudades como el número de habitantes. Chequea errores en los parámetros y muestra mensajes descritivos. 
 
+DROP PROCEDURE IF EXISTS ejercicio5;
+DELIMITER //
+CREATE PROCEDURE ejercicio5(IN PoblacionMin INT, IN NumCiudades INT)
+BEGIN
+
+	SELECT Pais.Nombre
+	FROM Pais JOIN Ciudad
+	ON Pais.Codigo=Ciudad.CodigoPais
+	WHERE Ciudad.Poblacion >= PoblacionMin
+	GROUP BY 1
+	HAVING COUNT(1)>=NumCiudades;
+    
+END//
+DELIMITER ;
+CALL ejercicio5(2000000,2);
+
 -- ----------------------------------------------------------------------------------------------
 -- Ejercicio 6. Crea una función que nos indique el número de palabras de una cadena. Para ello recorreremos la cadena de entrada. Entendemos como palabra cualquier secuencia segida de letras, letras acentuadas y dígitos; cualquier otra secuencia de uno o más carácteres es un separador: espacio, coma, punto, etc.
-
+DROP PROCEDURE IF EXISTS ejercicio6;
+DELIMITER //
+CREATE PROCEDURE ejercicio6(IN Cadena CHAR(140))
+BEGIN
+	DECLARE Contador INT DEFAULT 1;
+    DECLARE Longitud INT DEFAULT char_length(Cadena);
+    DECLARE ContadorPalabras INT DEFAULT 0;
+    DECLARE Posicion CHAR;
+    DECLARE EraLetra BOOLEAN DEFAULT false;
+REPEAT
+    SET Posicion = SUBSTRING(Cadena, Contador, 1);
+    IF Posicion BETWEEN 'A' AND 'Z' OR Posicion BETWEEN 'a' AND 'z' OR Posicion BETWEEN '0' AND '9' THEN 
+		IF !EraLetra THEN
+			SET ContadorPalabras = ContadorPalabras + 1;
+		END IF;
+        SET EraLetra = true;
+    ELSE
+		SET EraLetra = false;
+    END IF;
+    SET Contador = Contador + 1;
+UNTIL Contador > Longitud  END REPEAT; 
+SELECT ContadorPalabras AS 'Palabras contadas';
+END//
+DELIMITER ;
+CALL ejercicio6("Hola");
+CALL ejercicio6("Hola buenos dias");
+CALL ejercicio6("Hola, que tal... yo bien");
 -- ----------------------------------------------------------------------------------------------
 -- Ejercicio 7. Crea una función que nos indique si la cadena introducida es palíndromo. Entendemos como palíndromos:  radar, reconocer, rotor, salas, seres, etc.
-
+DROP FUNCTION IF EXISTS ejercicio7;
+DELIMITER //
+CREATE FUNCTION ejercicio7(Cadena CHAR(140)) RETURNS VARCHAR(140)
+BEGIN
+	SET @CadenaDerecha = right(Cadena, char_length(cadena)/2);
+    SET @CadenaIzq = left(Cadena, char_length(Cadena)/2);
+    IF REVERSE(@CadenaDerecha) = @CadenaIzq THEN
+		RETURN "Es palindromo";
+	ELSE
+		RETURN "No es palindromo";
+	END IF;
+END//
+DELIMITER ;
+SELECT ejercicio7("Reconocer");
 -- ----------------------------------------------------------------------------------------------
 -- Ejercicio 8. Crea una función que nos indique si la cadena introducida es palíndromo. Entendemos como palíndromos:  radar, reconocer, rotor, salas, seres, etc. USA un bucle y la funión SUBSTR() para comprobar el carácter de una posición concreta en la cadena.
+DROP FUNCTION IF EXISTS ejercicio8;
+DELIMITER //
+CREATE FUNCTION ejercicio8(Cadena CHAR(140)) RETURNS VARCHAR(140)
+BEGIN
+	DECLARE Contador INT DEFAULT 1; 
+    DECLARE Iguales BOOLEAN DEFAULT TRUE;
+    DECLARE CadenaReves CHAR(140) DEFAULT REVERSE(Cadena);
+REPEAT
+	IF SUBSTRING(Cadena, Contador, 1) != SUBSTRING(CadenaReves, Contador, 1) THEN
+		SET Iguales = FALSE;
+	END IF;
+    SET Contador = Contador + 1;
+UNTIL !Iguales OR Contador > CHAR_LENGTH(Cadena) END REPEAT;
+IF Iguales THEN
+	RETURN "Es palindromo";
+ELSE
+	RETURN "No es palindromo";
+END IF;
+END//
+DELIMITER ;
+SELECT ejercicio8("Reconocer");
 
 -- ----------------------------------------------------------------------------------------------
 -- Ejercicio 9. Crea una función que nos indique si la cadena introducida es palíndromo sin tener en cuenta los espacios en blanco y signos de puntuación. En este caso serían palíndromos: "Añora la Roña", "La ruta, natural", etc.
+DROP FUNCTION IF EXISTS ejercicio9;
+DELIMITER //
+CREATE FUNCTION ejercicio9(Cadena CHAR(140)) RETURNS VARCHAR(140)
+BEGIN
+	DECLARE Contador INT DEFAULT 1; 
+    DECLARE CadenaLimpia CHAR(140) DEFAULT "";
+    DECLARE Posicion CHAR(140) DEFAULT "";
+    
+REPEAT
+	SET Posicion = SUBSTR(Cadena, Contador, 1);
+	IF Posicion BETWEEN 'A' AND 'Z' OR Posicion BETWEEN 'a' AND 'z' OR Posicion BETWEEN '0' AND '9' THEN
+		SET CadenaLimpia = CONCAT(CadenaLimpia, Posicion);
+	END IF;
+	SET Contador = Contador + 1;
+UNTIL Contador > CHAR_LENGTH(Cadena) END REPEAT;
+
+SET @CadenaDerecha = right(CadenaLimpia, char_length(CadenaLimpia)/2);
+    SET @CadenaIzq = left(CadenaLimpia, char_length(CadenaLimpia)/2);
+     IF REVERSE(@CadenaDerecha) = @CadenaIzq THEN
+		 RETURN "Es palindromo";
+	 ELSE
+	 	RETURN "No es palindromo";
+	 END IF;
+END//
+DELIMITER ;
+SELECT ejercicio9("La ruta, natural");
 
 -- ----------------------------------------------------------------------------------------------
 -- Ejercicio 10. Realiza una función que acepte un número entero lo más grande posible (DECIMAL(65)) y que nos devuelve verdadero o falso según dicho número sea primo o no. Recordemos la definición de número primo: "un número primo es un número natural mayor que 1 que tiene únicamente dos divisores distintos: él mismo y el 1". Para conocer si un número es divisible por otro, puedes usar la función MOD(N,M) que devuelve el resto de dividir N entre M. Si MOD(N,M)=0, entonces M es un divisor de N. Para encontrar los divisores de un número hay que empezar probando por 1 e ir incrementando, pero no hace falta llegar hasta el número N, sino que basta con llegar a raíz de N (https://es.wikipedia.org/wiki/N%C3%BAmero_primo#Tests_de_primalidad)
